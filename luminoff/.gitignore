@@ -1,0 +1,63 @@
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+
+# === Django ===
+# Banco de dados local (ex: SQLite)
+db.sqlite3
+db.sqlite3-journal
+
+# Arquivos de migração compilados
+*.pot
+*.pyc
+
+# === Ambiente virtual ===
+venv/
+env/
+.venv/
+.env/
+
+# === Configurações e variáveis de ambiente ===
+*.env
+.env.*
+!.env.example
+
+# === Logs ===
+*.log
+logs/
+*.log.*
+
+# === Cache e temporários ===
+*.pid
+*.seed
+*.tmp
+*.bak
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# === Arquivos de mídia e estáticos gerados ===
+media/
+staticfiles/
+static_root/
+collected_static/
+build/
+dist/
+
+# === VS Code / IDEs ===
+.vscode/
+.idea/
+*.code-workspace
+
+# === Pytest / Coverage ===
+.coverage
+htmlcov/
+.tox/
+.pytest_cache/
+
+# === Docker (se usar) ===
+*.pid
+*.seed
+docker-compose.override.yml
