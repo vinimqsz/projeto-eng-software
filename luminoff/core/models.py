@@ -2,26 +2,20 @@ from django.db import models
 from django.contrib.auth.models import User
 
 
-class PerfilUsuario(models.Model):
+class Professor(models.Model):
     """Perfil estendido para todos os usuários do sistema"""
-    TIPO_CHOICES = [
-        ('PROF', 'Professor'),
-        ('SEC', 'Secretário'),
-        ('COORD', 'Coordenador'),
-    ]
     
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='perfil')
-    tipo = models.CharField(max_length=5, choices=TIPO_CHOICES)
     matricula = models.CharField(max_length=20, unique=True)
     departamento = models.CharField(max_length=100)
     telefone = models.CharField(max_length=15, blank=True)
     
     class Meta:
-        verbose_name = "Perfil de Usuário"
-        verbose_name_plural = "Perfis de Usuários"
+        verbose_name = "Professor"
+        verbose_name_plural = "Professores"
     
     def __str__(self):
-        return f"{self.user.get_full_name()} ({self.get_tipo_display()})"
+        return f"{self.user.get_full_name()}"
 
 
 class Semestre(models.Model):
@@ -96,8 +90,29 @@ class Disciplina(models.Model):
         return f"{self.codigo} - {self.nome}"
 
 
-class HorarioAula(models.Model):
-    """Gerenciamento de horários de aula (RF002)"""
+class Turma(models.Model):
+    """Representa uma turma de uma disciplina no semestre"""
+    semestre = models.ForeignKey('Semestre', on_delete=models.CASCADE, related_name='turmas')
+    disciplina = models.ForeignKey('Disciplina', on_delete=models.CASCADE, related_name='turmas')
+    professor = models.ForeignKey('Professor', on_delete=models.CASCADE, related_name='turmas')
+                                   
+    codigo_turma = models.CharField(max_length=10, help_text="Ex: T01, T02")
+    numero_alunos = models.IntegerField(default=0)
+    ativo = models.BooleanField(default=True)
+    criada_em = models.DateField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = "Turma"
+        verbose_name_plural = "Turmas"
+        unique_together = ['semestre', 'disciplina', 'codigo_turma']
+        ordering = ['disciplina', 'codigo_turma']
+    
+    def __str__(self):
+        return f"{self.disciplina.codigo} - {self.codigo_turma} ({self.professor.user.get_full_name()})"
+
+
+class HorarioTurma(models.Model):
+    """Cada horário da turma (uma turma pode ter vários horários)"""
     DIA_SEMANA = [
         (0, 'Segunda-feira'),
         (1, 'Terça-feira'),
@@ -108,26 +123,17 @@ class HorarioAula(models.Model):
         (6, 'Domingo'),
     ]
     
-    semestre = models.ForeignKey(Semestre, on_delete=models.CASCADE, related_name='horarios')
-    sala = models.ForeignKey(Sala, on_delete=models.CASCADE, related_name='horarios')
-    professor = models.ForeignKey(PerfilUsuario, on_delete=models.CASCADE, 
-                                   related_name='horarios', 
-                                   limit_choices_to={'tipo': 'PROF'})
-    disciplina = models.ForeignKey(Disciplina, on_delete=models.CASCADE, related_name='horarios')
+    turma = models.ForeignKey(Turma, on_delete=models.CASCADE, related_name='horarios')
+    sala = models.ForeignKey('Sala', on_delete=models.CASCADE, related_name='horarios_turma')
     dia_semana = models.IntegerField(choices=DIA_SEMANA)
-    hora_inicio = models.TimeField()  # ← CORRIGIDO: era DateTimeField
-    hora_fim = models.TimeField()     # ← CORRIGIDO: era DateTimeField
-    numero_alunos = models.IntegerField(default=0, help_text="Número de alunos matriculados")
-    ativo = models.BooleanField(default=True)
-    desligamento_excepcional = models.DateField(null=True, blank=True)  # ← CORRIGIDO: removido default=False
-    criada_em = models.DateField(auto_now_add=True)
-    atualizada_em = models.DateField(auto_now=True)
+    hora_inicio = models.TimeField()
+    hora_fim = models.TimeField()
     
     class Meta:
-        verbose_name = "Horário de Aula"
-        verbose_name_plural = "Horários de Aula"
-        ordering = ['semestre', 'dia_semana', 'hora_inicio']
-        unique_together = ['semestre', 'sala', 'dia_semana', 'hora_inicio']
+        verbose_name = "Horário da Turma"
+        verbose_name_plural = "Horários das Turmas"
+        ordering = ['turma', 'dia_semana', 'hora_inicio']
+        unique_together = ['sala', 'dia_semana', 'hora_inicio']
     
     def __str__(self):
-        return f"{self.disciplina.codigo} - {self.sala.nome} - {self.get_dia_semana_display()}"
+        return f"{self.turma} - {self.get_dia_semana_display()} {self.hora_inicio}-{self.hora_fim}"

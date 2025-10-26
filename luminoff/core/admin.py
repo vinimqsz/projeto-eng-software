@@ -2,36 +2,29 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
 from .models import (
-    Semestre, PerfilUsuario, Sala, Disciplina, HorarioAula
+    HorarioTurma, Professor, Semestre, Professor, Sala, Disciplina, Turma
 )
 
 
-# Inline para mostrar PerfilUsuario junto com User
-class PerfilUsuarioInline(admin.StackedInline):
-    model = PerfilUsuario
+# Inline para mostrar Professor junto com User
+class ProfessorInline(admin.StackedInline):
+    model = Professor
     can_delete = False
-    verbose_name = 'Perfil'
-    verbose_name_plural = 'Perfil do Usuário'
-    fields = ['tipo', 'matricula', 'departamento', 'telefone']
+    verbose_name = 'Professor'
+    verbose_name_plural = 'Professores'
+    fields = ['matricula', 'departamento', 'telefone']
 
 
 # Extende o UserAdmin para incluir PerfilUsuario
-class UserAdmin(BaseUserAdmin):
+'''class UserAdmin(BaseUserAdmin):
     inlines = [PerfilUsuarioInline]
     list_display = ['username', 'email', 'first_name', 'last_name', 'get_tipo', 'is_staff']
-    list_filter = ['is_staff', 'is_superuser', 'is_active', 'perfil__tipo']
-    
-    def get_tipo(self, obj):
-        try:
-            return obj.perfilusuario.get_tipo_display()
-        except PerfilUsuario.DoesNotExist:
-            return '-'
-    get_tipo.short_description = 'Tipo'
-
+    list_filter = ['is_staff', 'is_superuser', 'is_active', 'perfil__tipo']'''
 
 # Re-registra o User com o novo admin
 admin.site.unregister(User)
-admin.site.register(User, UserAdmin)
+#admin.site.register(User, UserAdmin)
+admin.site.register(User)
 
 
 @admin.register(Semestre)
@@ -67,7 +60,11 @@ class SemestreAdmin(admin.ModelAdmin):
 @admin.register(Sala)
 class SalaAdmin(admin.ModelAdmin):
     list_display = ['nome', 'tipo', 'get_tipo_display', 'capacidade', 'localizacao', 'ativa']
-    list_filter = ['tipo', 'ativa']
+    list_filter = [
+        'ativa',           # Ativa/Inativa
+        'tipo',            # Tipo de sala (Lab, Sala de Aula, etc)
+        'criada_em',       # Filtro por data de criação
+    ]
     search_fields = ['nome', 'localizacao']
     ordering = ['nome']
     
@@ -91,7 +88,11 @@ class SalaAdmin(admin.ModelAdmin):
 @admin.register(Disciplina)
 class DisciplinaAdmin(admin.ModelAdmin):
     list_display = ['codigo', 'nome', 'carga_horaria', 'ativa', 'criada_em']
-    list_filter = ['ativa']
+    list_filter = [
+        'ativa',           # Ativa/Inativa
+        'carga_horaria',   # Filtro por carga horária
+        'criada_em',       # Filtro por data
+    ]
     search_fields = ['codigo', 'nome']
     ordering = ['codigo']
     
@@ -108,89 +109,35 @@ class DisciplinaAdmin(admin.ModelAdmin):
     readonly_fields = ['criada_em', 'atualizada_em']
 
 
-@admin.register(HorarioAula)
-class HorarioAulaAdmin(admin.ModelAdmin):
-    list_display = [
-        'get_disciplina_codigo', 
-        'disciplina', 
-        'sala', 
-        'get_dia_semana', 
-        'hora_inicio', 
-        'hora_fim',
-        'numero_alunos',
-        'ativo'
-    ]
-    list_filter = [
-        'semestre', 
-        'dia_semana', 
-        'ativo', 
-        'sala__tipo',
-        'disciplina'
-    ]
-    search_fields = [
-        'disciplina__codigo', 
-        'disciplina__nome', 
-        'sala__nome'
-    ]
-    ordering = ['semestre', 'dia_semana', 'hora_inicio']
+class HorarioTurmaInline(admin.TabularInline):
+    model = HorarioTurma
+    extra = 2
+    fields = ['sala', 'dia_semana', 'hora_inicio', 'hora_fim']
+
+
+@admin.register(Turma)
+class TurmaAdmin(admin.ModelAdmin):
+    list_display = ['__str__', 'disciplina', 'professor', 'semestre', 'numero_alunos', 'ativo']
+    list_filter = ['semestre', 'disciplina', 'professor', 'ativo']
+    search_fields = ['disciplina__codigo', 'disciplina__nome', 'codigo_turma']
+    inlines = [HorarioTurmaInline]  # ← Edita horários inline!
     
     fieldsets = (
-        ('Período', {
-            'fields': ('semestre', 'ativo')
-        }),
-        ('Alocação', {
-            'fields': ('sala', 'disciplina', 'dia_semana')
-        }),
-        ('Horário', {
-            'fields': ('hora_inicio', 'hora_fim')
-        }),
-        ('Informações Adicionais', {
-            'fields': ('numero_alunos', 'desligamento_excepcional')
-        }),
-        ('Metadados', {
-            'fields': ('criada_em', 'atualizada_em'),
-            'classes': ('collapse',)
+        ('Informações da Turma', {
+            'fields': ('semestre', 'disciplina', 'professor', 'codigo_turma', 'numero_alunos', 'ativo')
         }),
     )
-    
-    readonly_fields = ['criada_em', 'atualizada_em']
-    
-    # Filtros horizontais para melhor UX
-    autocomplete_fields = ['disciplina', 'sala']
-    
-    def get_disciplina_codigo(self, obj):
-        return obj.disciplina.codigo
-    get_disciplina_codigo.short_description = 'Código'
-    get_disciplina_codigo.admin_order_field = 'disciplina__codigo'
+
+
+@admin.register(HorarioTurma)
+class HorarioTurmaAdmin(admin.ModelAdmin):
+    list_display = ['turma', 'sala', 'get_dia_semana', 'hora_inicio', 'hora_fim']
+    list_filter = ['turma__semestre', 'dia_semana', 'sala']
+    search_fields = ['turma__disciplina__codigo', 'turma__disciplina__nome']
     
     def get_dia_semana(self, obj):
         return obj.get_dia_semana_display()
     get_dia_semana.short_description = 'Dia'
-    get_dia_semana.admin_order_field = 'dia_semana'
-    
-    # Validação para evitar conflitos de horário
-    def save_model(self, request, obj, form, change):
-        # Verifica conflitos na mesma sala
-        conflitos = HorarioAula.objects.filter(
-            semestre=obj.semestre,
-            sala=obj.sala,
-            dia_semana=obj.dia_semana,
-            ativo=True
-        ).exclude(pk=obj.pk)
-        
-        for horario in conflitos:
-            # Verifica sobreposição de horários
-            if (obj.hora_inicio < horario.hora_fim and 
-                obj.hora_fim > horario.hora_inicio):
-                from django.contrib import messages
-                messages.error(
-                    request, 
-                    f'Conflito de horário! A sala {obj.sala} já está ocupada '
-                    f'com {horario.disciplina} no mesmo horário.'
-                )
-                return
-        
-        super().save_model(request, obj, form, change)
 
 
 # Customização do site admin
