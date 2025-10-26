@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class CoordenacaoSecretariadoConfig(AppConfig):
+class Core(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'coordenacao_secretariado'
+    name = 'core'
