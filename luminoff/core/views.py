@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login as auth_login
 from .models import Semestre
 
+## por enquanto, essas views não estão sendo usadas
 def login(request):
     if request.method == 'POST':
         username = request.POST.get('username')
