@@ -21,10 +21,29 @@ class ProfessorInline(admin.StackedInline):
     list_display = ['username', 'email', 'first_name', 'last_name', 'get_tipo', 'is_staff']
     list_filter = ['is_staff', 'is_superuser', 'is_active', 'perfil__tipo']'''
 
+# Customiza o Admin do Professor
+@admin.register(Professor)
+class ProfessorAdmin(admin.ModelAdmin):
+    list_display = ['get_nome_completo', 'matricula', 'departamento', 'telefone', 'get_email']
+    search_fields = ['user__first_name', 'user__last_name', 'matricula', 'departamento']
+    ordering = ['user__first_name', 'user__last_name']
+    
+    def get_nome_completo(self, obj):
+        return f"{obj.user.first_name} {obj.user.last_name}"
+    get_nome_completo.short_description = 'Nome'
+    
+    def get_email(self, obj):
+        return obj.user.email
+    get_email.short_description = 'Email'
+
+# Customiza o Admin do User para incluir o Professor inline
+class UserAdmin(BaseUserAdmin):
+    inlines = [ProfessorInline]
+    list_display = ['username', 'email', 'first_name', 'last_name', 'is_staff']
+    
 # Re-registra o User com o novo admin
 admin.site.unregister(User)
-#admin.site.register(User, UserAdmin)
-admin.site.register(User)
+admin.site.register(User, UserAdmin)
 
 
 @admin.register(Semestre)
