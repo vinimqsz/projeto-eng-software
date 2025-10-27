@@ -25,6 +25,7 @@ class ProfessorInline(admin.StackedInline):
 @admin.register(Professor)
 class ProfessorAdmin(admin.ModelAdmin):
     list_display = ['get_nome_completo', 'matricula', 'departamento', 'telefone', 'get_email']
+    list_filter = ['departamento', 'user__is_active']
     search_fields = ['user__first_name', 'user__last_name', 'matricula', 'departamento']
     ordering = ['user__first_name', 'user__last_name']
     
@@ -78,24 +79,30 @@ class SemestreAdmin(admin.ModelAdmin):
 
 @admin.register(Sala)
 class SalaAdmin(admin.ModelAdmin):
-    list_display = ['nome', 'tipo', 'get_tipo_display', 'capacidade', 'localizacao', 'ativa']
+    list_display = ['nome', 'tipo', 'get_tipo_display', 'capacidade', 'get_andar_display', 'localizacao', 'ativa']
     list_filter = [
         'ativa',           # Ativa/Inativa
         'tipo',            # Tipo de sala (Lab, Sala de Aula, etc)
+        'andar',          # Filtro por andar
         'criada_em',       # Filtro por data de criação
     ]
     search_fields = ['nome', 'localizacao']
-    ordering = ['nome']
+    ordering = ['andar', 'nome']
     
     fieldsets = (
         ('Informações da Sala', {
-            'fields': ('nome', 'tipo', 'capacidade', 'localizacao', 'ativa')
+            'fields': ('nome', 'tipo', 'capacidade', 'andar', 'localizacao', 'ativa')
         }),
         ('Metadados', {
             'fields': ('criada_em', 'atualizada_em'),
             'classes': ('collapse',)
         }),
     )
+    
+    def get_andar_display(self, obj):
+        return 'Térreo' if obj.andar == 0 else f'{obj.andar}º Andar'
+    get_andar_display.short_description = 'Andar'
+    get_andar_display.admin_order_field = 'andar'
     
     readonly_fields = ['criada_em', 'atualizada_em']
     
@@ -150,9 +157,14 @@ class TurmaAdmin(admin.ModelAdmin):
 
 @admin.register(HorarioTurma)
 class HorarioTurmaAdmin(admin.ModelAdmin):
-    list_display = ['turma', 'sala', 'get_dia_semana', 'hora_inicio', 'hora_fim']
-    list_filter = ['turma__semestre', 'dia_semana', 'sala']
-    search_fields = ['turma__disciplina__codigo', 'turma__disciplina__nome']
+    list_display = ['turma', 'get_professor', 'sala', 'get_dia_semana', 'hora_inicio', 'hora_fim']
+    list_filter = ['turma__semestre', 'dia_semana', 'sala', 'turma__professor', 'hora_inicio', 'hora_fim']
+    search_fields = ['turma__disciplina__codigo', 'turma__disciplina__nome', 'turma__professor__user__first_name', 'turma__professor__user__last_name']
+    
+    def get_professor(self, obj):
+        return obj.turma.professor
+    get_professor.short_description = 'Professor'
+    get_professor.admin_order_field = 'turma__professor__user__first_name'
     
     def get_dia_semana(self, obj):
         return obj.get_dia_semana_display()
